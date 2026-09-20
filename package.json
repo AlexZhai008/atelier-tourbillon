@@ -1,0 +1,1 @@
+{"name":"atelier-tourbillon","version":"1.0.0","private":true,"type":"module","scripts":{"dev":"node server.mjs","build":"node scripts/build.mjs","preview":"node server.mjs --dist","test":"node scripts/verify-model.mjs"},"dependencies":{"three":"0.180.0"}}

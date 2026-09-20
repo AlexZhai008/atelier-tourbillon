@@ -1,0 +1,13 @@
+import {mkdir,cp,writeFile} from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
+const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const out=path.join(root,'dist');
+const vendor=path.dirname(path.dirname(createRequire(import.meta.url).resolve('three')));
+await mkdir(out,{recursive:true});
+for(const f of ['index.html','src'])await cp(path.join(root,f),path.join(out,f),{recursive:true});
+await cp(path.join(root,'public'),out,{recursive:true});
+for(const d of ['build','examples/jsm'])await cp(path.join(vendor,d),path.join(out,'vendor',d),{recursive:true});
+await writeFile(path.join(out,'build-info.json'),JSON.stringify({name:'ATELIER TOURBILLON',date:new Date().toISOString(),three:'0.180.0'},null,2));
+console.log('Built self-contained static website in dist/');
