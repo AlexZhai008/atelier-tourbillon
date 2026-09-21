@@ -1,32 +1,34 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { createStudio } from './watch-finishing.js';
 import { createWatch, PARTS } from './watch-model.js';
 
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const canvas=$('#canvas'),viewport=$('#viewport');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-const state={mode:'assembled',running:!reduced,labels:true,transparent:true,speed:1,explosion:0,explodeTarget:0,tour:false,selected:null,simTime:0,finish:'gold'};
+const state={mode:'assembled',running:!reduced,labels:true,transparent:true,speed:1,explosion:0,explodeTarget:0,tour:false,selected:null,simTime:0,finish:'gold',quality:'high'};
 let renderer;
 try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});}
 catch(error){$('#loading').hidden=true;$('#webgl-error').hidden=false;console.error(error);}
 if(renderer)initialize();
 
 function initialize(){
-  renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setClearColor(0x111514,0);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.93;renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.setClearColor(0x111514,0);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.02;renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.transmissionResolutionScale=1;renderer.shadowMap.enabled=true;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(33,1,.04,150);
   // A dark rendered background also appears through the transmission buffer.
   const backdrop=document.createElement('canvas');backdrop.width=1024;backdrop.height=1024;
   const context=backdrop.getContext('2d');const gradient=context.createRadialGradient(530,440,10,520,480,620);gradient.addColorStop(0,'#2d382e');gradient.addColorStop(.5,'#19221c');gradient.addColorStop(1,'#111514');context.fillStyle=gradient;context.fillRect(0,0,1024,1024);
   const background=new THREE.CanvasTexture(backdrop);background.colorSpace=THREE.SRGBColorSpace;scene.background=background;
-  const envScene=new RoomEnvironment();const pmrem=new THREE.PMREMGenerator(renderer);const environment=pmrem.fromScene(envScene,.04);scene.environment=environment.texture;scene.environmentIntensity=.8;envScene.dispose();pmrem.dispose();
-  const fill=new THREE.HemisphereLight(0xf1f4e6,0x30352f,1.3);scene.add(fill);
-  const key=new THREE.DirectionalLight(0xffe9cc,2.8);key.position.set(-3,7,8);scene.add(key);
-  const rim=new THREE.DirectionalLight(0xcfe2ed,2.5);rim.position.set(5,2,-2);scene.add(rim);
-  const front=new THREE.DirectionalLight(0xfff3da,.8);front.position.set(1,-5,6);scene.add(front);
-  const watch=createWatch();scene.add(watch.root);
+  const envScene=createStudio();const pmrem=new THREE.PMREMGenerator(renderer);const environment=pmrem.fromScene(envScene,.015,.1,50,{size:512});scene.environment=environment.texture;scene.environmentIntensity=.85;envScene.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});pmrem.dispose();
+  const fill=new THREE.HemisphereLight(0xe8f0ff,0x181b1e,.75);scene.add(fill);
+  const key=new THREE.DirectionalLight(0xffebd5,2.5);key.position.set(-4,6,9);scene.add(key);key.castShadow=true;key.shadow.mapSize.set(2048,2048);Object.assign(key.shadow.camera,{left:-5,right:5,top:5,bottom:-5,near:1,far:30});key.shadow.bias=-.0002;key.shadow.normalBias=.014;key.shadow.radius=2;
+  const rim=new THREE.DirectionalLight(0xcfe2ff,1.5);rim.position.set(5,2,-3);scene.add(rim);
+  const front=new THREE.DirectionalLight(0xfff3e0,.6);front.position.set(1,-5,6);scene.add(front);
+  const watch=createWatch({anisotropy:renderer.capabilities.getMaxAnisotropy()});scene.add(watch.root);
   const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.dampingFactor=.075;controls.minDistance=3;controls.maxDistance=35;controls.enablePan=true;controls.maxPolarAngle=Math.PI;controls.target.set(0,0,0);
-  const initialDate=new Date();const clockSeconds=initialDate.getHours()*3600+initialDate.getMinutes()*60+initialDate.getSeconds()+initialDate.getMilliseconds()/1000;
+  // Presentation starts at the conventional 10:08 pose so the tourbillon stays visible.
+  const clockSeconds=10*3600+8*60;
   let mobile=false,width=1,height=1,transition=null,last=performance.now(),tourTime=0,frames=0,fpsTime=last,labelCounter=0;
   let toastTimer;const keys=new Set();const raycaster=new THREE.Raycaster();const pointer=new THREE.Vector2();
   const flyEuler=new THREE.Euler(0,0,0,'YXZ');const direction=new THREE.Vector3();const right=new THREE.Vector3();const world=new THREE.Vector3();
@@ -34,13 +36,20 @@ function initialize(){
   const leaderSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');leaderSvg.classList.add('label-leaders');$('#labels').append(leaderSvg);
   function toast(message){$('#toast').textContent=message;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),3000);}
   function switchState(id,value){$(id).classList.toggle('on',value);$(id).setAttribute('aria-checked',String(value));}
-  function homePosition(exploded=false){return mobile?new THREE.Vector3(exploded?10:4.3,exploded?7:3.2,exploded?27:25.5):new THREE.Vector3(exploded?11:4.3,exploded?6:3.2,exploded?16:15.2);}
+  function homePosition(exploded=false){return mobile?new THREE.Vector3(exploded?10:2.4,exploded?7:2.5,exploded?27:24):new THREE.Vector3(exploded?11:2.4,exploded?6:2.5,exploded?16:14.5);}
+  function applyQuality(){
+    const config={standard:{ratio:Math.min(devicePixelRatio,1.5),budget:3500000},high:{ratio:Math.max(2,Math.min(devicePixelRatio,2.5)),budget:7000000},ultra:{ratio:3,budget:14000000}}[state.quality];
+    const ratio=Math.min(config.ratio,Math.sqrt(config.budget/(width*height)),renderer.capabilities.maxTextureSize/Math.max(width,height));
+    renderer.setPixelRatio(ratio);renderer.setSize(width,height,false);
+    $('#render-size').textContent=`${canvas.width} × ${canvas.height}`;
+    $$('[data-quality]').forEach(b=>{b.classList.toggle('active',b.dataset.quality===state.quality);b.setAttribute('aria-pressed',String(b.dataset.quality===state.quality));});
+  }
   function resize(){
     width=viewport.clientWidth;height=viewport.clientHeight;const wasMobile=mobile;mobile=innerWidth<=900;
     camera.aspect=width/height;
     camera.setViewOffset(width,height,mobile?0:-width*.008,mobile?-height*.205:0,width,height);
-    camera.updateProjectionMatrix();renderer.setSize(width,height,false);
-    if(wasMobile!==mobile){camera.position.copy(homePosition(state.explodeTarget>.1));controls.target.set(0,0,state.explodeTarget);controls.update();}
+    camera.updateProjectionMatrix();applyQuality();
+    if(wasMobile!==mobile){transition=null;camera.position.copy(homePosition(state.explodeTarget>.1));controls.target.set(0,0,state.explodeTarget);controls.update();}
   }
   new ResizeObserver(resize).observe(viewport);resize();camera.position.copy(homePosition());controls.update();
   function animateView(position,target,duration=1000){transition={from:camera.position.clone(),to:position.clone(),targetFrom:controls.target.clone(),targetTo:target.clone(),start:performance.now(),duration:reduced?1:duration};}
@@ -57,11 +66,13 @@ function initialize(){
     const line=document.createElementNS('http://www.w3.org/2000/svg','path');leaderSvg.append(line);leaders.set(part.id,line);
   });
   $('#close-detail').onclick=clearSelection;
+  $$('[data-quality]').forEach(b=>b.onclick=()=>{state.quality=b.dataset.quality;applyQuality();toast(`${b.textContent}画质 · ${canvas.width} × ${canvas.height} 实际渲染像素`);});
+  $('#macro-view').onclick=()=>{if(state.mode==='flight')exitFlight();stopTour();clearSelection();setExplosion(0);animateView(new THREE.Vector3(.6,.85,mobile?13:8.1),new THREE.Vector3(0,0,0));$('#view-name').textContent='MOVEMENT MACRO';};
   $('#focus-part').onclick=()=>{
     if(!state.selected)return;
     if(state.mode==='flight')exitFlight();
     watch.anchors[state.selected].getWorldPosition(world);const target=world.clone();
-    const distance=state.selected==='case'?9:state.selected==='tourbillon'?3.5:5;
+    const distance=state.selected==='case'?9:state.selected==='tourbillon'?(mobile?7:4.5):5.5;
     animateView(target.clone().add(new THREE.Vector3(.4,.4,distance)),target);$('#detail').hidden=true;
   };
   function setModeButtons(mode){$$('[data-mode]').forEach(b=>{b.classList.toggle('active',b.dataset.mode===mode);b.setAttribute('aria-pressed',String(b.dataset.mode===mode));});$('#view-name').textContent=mode==='flight'?'FREE FLIGHT':mode==='exploded'?'EXPLODED VIEW':'ASSEMBLED VIEW';}
@@ -151,8 +162,9 @@ function initialize(){
     }
   }
   function frame(now){
-    requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.06);last=now;if(document.hidden)return;
-    if(state.running)state.simTime+=dt*state.speed;
+    requestAnimationFrame(frame);const elapsed=Math.max(0,(now-last)/1000),dt=Math.min(elapsed,.06);last=now;if(document.hidden)return;
+    // Keep physical timing independent of render quality; clamp only camera interpolation.
+    if(state.running)state.simTime+=elapsed*state.speed;
     const blend=reduced?1:1-Math.exp(-dt*5);state.explosion+=(state.explodeTarget-state.explosion)*blend;
     if(Math.abs(state.explodeTarget-state.explosion)<.0001)state.explosion=state.explodeTarget;
     watch.update(state.simTime,state.explosion,clockSeconds);
@@ -164,6 +176,7 @@ function initialize(){
     }else if(transition){
       const t=Math.min((now-transition.start)/transition.duration,1),ease=t*t*(3-2*t);camera.position.lerpVectors(transition.from,transition.to,ease);controls.target.lerpVectors(transition.targetFrom,transition.targetTo,ease);controls.update();if(t===1)transition=null;
     }else controls.update();
+    if(labelCounter%6===0)renderer.shadowMap.needsUpdate=true;
     renderer.render(scene,camera);if(++labelCounter%2===0)updateLabels();
     frames++;if(now-fpsTime>1000){$('#fps').textContent=`${Math.round(frames*1000/(now-fpsTime))} FPS`;frames=0;fpsTime=now;}
   }
