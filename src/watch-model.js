@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {createFinishes} from './watch-finishing.js';
 import {geometryTools,batchDetails} from './watch-geometry.js';
+import {createBracelet} from './watch-bracelet.js';
 const TAU=Math.PI*2;
 export const PARTS=[
   {id:'crystal',name:'蓝宝石表镜',en:'SAPPHIRE CRYSTAL',text:'高透射、低粗糙度表镜，降低折射对微小机芯结构的模糊。透明中壳与底盖是本模型的展示性改造；参考腕表原款采用金属表壳。',anchor:[-1.65,1.2,.73]},
@@ -9,11 +10,11 @@ export const PARTS=[
   {id:'bridges',name:'深灰镂空桥板',en:'ANTHRACITE BRIDGES',text:'参考江诗丹顿 Overseas 2160 SQ 机芯的深灰镂空结构，采用细拉丝、抛光倒角、红宝石轴承与蓝钢螺钉。桥板路径按可见轮系重建，不是原厂零件测绘。',anchor:[-1.10,.05,.21]},
   {id:'train',name:'发条与传动轮系',en:'BARREL & GEAR TRAIN',text:'黄铜轮系具有细化齿形、圆周加工纹和钢制小齿轴。主轮系以齿数反比交替旋转；后层机板与边缘摆陀增加结构深度。齿形和传动路线为可视化近似。',anchor:[-.62,.84,-.02]},
   {id:'tourbillon',name:'六点位陀飞轮',en:'60-SECOND TOURBILLON',text:'参考 Overseas 的六点位布局与马耳他十字形框架，重建抛光框架、摆轮配重、蓝色游丝、擒纵轮与宝石轴承。框架 60 秒一周，摆轮按参考机芯的 2.5 Hz 往复。',anchor:[0,-1.03,.22]},
-  {id:'case',name:'表壳与一体式表链',en:'CASE & INTEGRATED BRACELET',text:'借鉴 Overseas 六瓣表圈与一体式金属表链的轮廓，交替使用缎面拉丝和镜面抛光。保留透明中壳便于探索内部；42.5 mm 为参考款直径，模型不是品牌官方数字资产。',anchor:[2.31,0,-.10]},
+  {id:'case',name:'表壳与一体式表链',en:'CASE & INTEGRATED BRACELET',text:'按参考图重建加宽的一体式金属表链：宽阔拉丝链节、抛光斜面与十字形咬合中节，从表壳向末端逐渐收窄。上下两段展开，保留透明中壳便于探索内部；42.5 mm 为参考款直径，模型不是品牌官方数字资产。',anchor:[2.31,0,-.10]},
 ];
 
 export function createWatch({anisotropy=8}={}){
-  const root=new THREE.Group();root.name='XT-02 / Overseas-inspired skeleton study';root.rotation.z=-.16;
+  const root=new THREE.Group();root.name='XT-02 / Overseas-inspired skeleton study';
   const m=createFinishes(anisotropy);
   const {mesh,extrude,ring,box,cylinder,torus,beam,screw,jewel,text,pathShape}=geometryTools(m);
   const groups={},anchors={},moving=[];
@@ -28,31 +29,10 @@ export function createWatch({anisotropy=8}={}){
   ring(1.92,1.78,.048,m.bridge,shell,0,0,-.31,m.steel);cylinder(1.975,.026,m.glass,shell,0,0,-.455);
   for(let i=0;i<8;i++){const a=i*TAU/8;screw(shell,2.025*Math.sin(a),2.025*Math.cos(a),-.48,.03);}
   for(const side of [-1,1]){
-    const shoulder=pathShape([[-1.02,1.78],[-.91,2.38],[-.65,2.46],[.65,2.46],[.91,2.38],[1.02,1.78]]);
-    const lugs=extrude(shoulder,.21,m.gold,m.polish,shell,0,0,-.04,.045);if(side<0)lugs.rotation.z=Math.PI;
-    const curve=new THREE.CatmullRomCurve3([[2.40,-.14],[3.16,-.36],[3.65,-1.30],[3.64,-3.05],[2.50,-4.80],[.58,-5.35]].map(([y,z])=>new THREE.Vector3(0,side*y,z)));
-    const count=30,pitch=curve.getLength()/count;
-    for(let i=0;i<=count;i++){
-      const u=i/count,p=curve.getPointAt(u),tangent=curve.getTangentAt(u);
-      const w=1.56-.36*Math.min(u*2.5,1),link=new THREE.Group();
-      link.position.copy(p);link.rotation.x=Math.atan2(side*tangent.z,side*tangent.y);shell.add(link);
-      // Rounded three-piece links with narrow polished shoulders and satin faces.
-      box(w,pitch*.91,.16,m.polish,link,0,0,0,.035);
-      box(w*.46,pitch*.85,.025,m.gold,link,0,0,.086,.010);
-      for(const sign of [-1,1]){
-        box(w*.225,pitch*.82,.022,m.gold,link,sign*w*.365,0,.084,.009);
-        const pin=cylinder(.024,.016,m.steel,link,sign*(w/2+.002),0,0);pin.rotation.y=Math.PI/2;
-      }
-    }
+    const shoulder=pathShape([[-1.31,1.61],[-1.22,2.13],[-1.15,2.27],[1.15,2.27],[1.22,2.13],[1.31,1.61]]);
+    const lugs=extrude(shoulder,.21,m.gold,m.polish,shell,0,0,-.10,.025);if(side<0)lugs.rotation.z=Math.PI;
   }
-  const clasp=new THREE.Group();clasp.position.set(0,0,-5.35);clasp.rotation.x=Math.PI;shell.add(clasp);
-  box(1.23,1.32,.18,m.polish,clasp,0,0,0,.06);
-  for(const side of [-1,1]){
-    box(1.14,.625,.025,m.gold,clasp,0,side*.322,.098,.025);
-    box(.065,.30,.085,m.steel,clasp,side*.631,0,0,.022);
-    cylinder(.045,1.12,m.steel,clasp,0,side*.60,-.045).rotation.y=Math.PI/2;
-  }
-  text('ATELIER',.62,.095,clasp,0,.22,.117,'#63523c',56);
+  createBracelet(shell,m,{extrude,box,cylinder,pathShape});
   const crown=new THREE.Group();crown.position.set(2.25,0,-.10);crown.rotation.y=Math.PI/2;shell.add(crown);
   cylinder(.182,.32,m.gold,crown);ring(.184,.148,.029,m.polish,crown,0,0,.17);cylinder(.149,.025,m.gold,crown,0,0,.172);
   for(let i=0;i<40;i++){const a=i*TAU/40;const b=box(.010,.031,.255,m.polish,crown,.181*Math.cos(a),.181*Math.sin(a),0,.003);b.rotation.z=a;}

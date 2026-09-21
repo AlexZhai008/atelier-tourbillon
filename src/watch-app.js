@@ -39,7 +39,7 @@ function initialize(){
   const leaderSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');leaderSvg.classList.add('label-leaders');$('#labels').append(leaderSvg);
   function toast(message){$('#toast').textContent=message;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),3000);}
   function switchState(id,value){$(id).classList.toggle('on',value);$(id).setAttribute('aria-checked',String(value));}
-  function homePosition(exploded=false){return mobile?new THREE.Vector3(exploded?10:2.4,exploded?7:2.5,exploded?27:24):new THREE.Vector3(exploded?11:2.4,exploded?6:2.5,exploded?16:14.5);}
+  function homePosition(exploded=false){return mobile?new THREE.Vector3(exploded?10:0,exploded?7:0,exploded?27:29):new THREE.Vector3(exploded?11:0,exploded?6:0,exploded?16:18.8);}
   function applyQuality(){
     const config={standard:{ratio:Math.min(devicePixelRatio,1.5),budget:3500000},high:{ratio:Math.max(2,Math.min(devicePixelRatio,2.5)),budget:7000000},ultra:{ratio:3,budget:14000000}}[state.quality];
     const ratio=Math.min(config.ratio,Math.sqrt(config.budget/(width*height)),renderer.capabilities.maxTextureSize/Math.max(width,height));

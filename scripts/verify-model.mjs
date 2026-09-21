@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {Box3} from 'three';
 import {createWatch,PARTS} from '../src/watch-model.js';
 import {beijingSeconds} from '../src/watch-time.js';
 // The geometry/kinematics test needs no browser: text texture drawing is stubbed.
@@ -6,6 +7,11 @@ globalThis.document={createElement(){return {width:0,height:0,getContext(){retur
 const watch=createWatch();const tau=Math.PI*2;
 const near=(actual,expected,message)=>assert.ok(Math.abs(actual-expected)<1e-8,`${message}: ${actual} vs ${expected}`);
 assert.equal(PARTS.length,7);
+near(watch.root.rotation.z,0,'Dial has no sideways tilt');
+const caseBounds=new Box3().setFromObject(watch.groups.case);
+assert.ok(caseBounds.min.z>-.6,'Straps do not wrap behind the case');
+assert.ok(caseBounds.min.y> -5 && caseBounds.max.y<5,'Open straps stay compact');
+assert.ok(caseBounds.min.y< -4 && caseBounds.max.y>4,'Straps extend on both sides of the dial');
 watch.update(0,0,0);assert.ok(Object.values(watch.groups).every(g=>g.position.z===0));
 watch.update(60,1,0);near(watch.cage.rotation.z,-tau,'60 second cage revolution');
 assert.equal(new Set(Object.values(watch.groups).map(g=>g.position.z)).size,7);
