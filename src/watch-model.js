@@ -30,17 +30,29 @@ export function createWatch({anisotropy=8}={}){
   for(const side of [-1,1]){
     const shoulder=pathShape([[-1.02,1.78],[-.91,2.38],[-.65,2.46],[.65,2.46],[.91,2.38],[1.02,1.78]]);
     const lugs=extrude(shoulder,.21,m.gold,m.polish,shell,0,0,-.04,.045);if(side<0)lugs.rotation.z=Math.PI;
-    for(let i=0;i<7;i++){
-      const y=side*(2.39+i*.275),z=-.14-.037*i*i,w=1.56-i*.045;const link=new THREE.Group();link.position.set(0,y,z);link.rotation.x=-side*(.09+i*.17);shell.add(link);
-      const outline=pathShape([[-w/2,-.13],[-w*.26,-.13],[-w*.20,-.155],[w*.20,-.155],[w*.26,-.13],[w/2,-.13],[w/2,.13],[w*.25,.13],[w*.20,.155],[-w*.20,.155],[-w*.25,.13],[-w/2,.13]]);
-      extrude(outline,.17,m.gold,m.polish,link,0,0,0,.016);
-      for(const sign of [-1,1]){const shoulder=box(.025,.24,.012,m.polish,link,sign*w*.245,0,.095,.004);shoulder.rotation.z=sign*.26;}
-
-      for(const sign of [-1,1])cylinder(.026,.018,m.steel,link,sign*(w/2-.045),0,.103);
+    const curve=new THREE.CatmullRomCurve3([[2.40,-.14],[3.16,-.36],[3.65,-1.30],[3.64,-3.05],[2.50,-4.80],[.58,-5.35]].map(([y,z])=>new THREE.Vector3(0,side*y,z)));
+    const count=30,pitch=curve.getLength()/count;
+    for(let i=0;i<=count;i++){
+      const u=i/count,p=curve.getPointAt(u),tangent=curve.getTangentAt(u);
+      const w=1.56-.36*Math.min(u*2.5,1),link=new THREE.Group();
+      link.position.copy(p);link.rotation.x=Math.atan2(side*tangent.z,side*tangent.y);shell.add(link);
+      // Rounded three-piece links with narrow polished shoulders and satin faces.
+      box(w,pitch*.91,.16,m.polish,link,0,0,0,.035);
+      box(w*.46,pitch*.85,.025,m.gold,link,0,0,.086,.010);
+      for(const sign of [-1,1]){
+        box(w*.225,pitch*.82,.022,m.gold,link,sign*w*.365,0,.084,.009);
+        const pin=cylinder(.024,.016,m.steel,link,sign*(w/2+.002),0,0);pin.rotation.y=Math.PI/2;
+      }
     }
-    box(1.14,.34,.15,m.gold,shell,0,side*4.21,-1.97,.035);box(.74,.22,.02,m.polish,shell,0,side*4.21,-1.882,.022);
   }
-  text('XT',.23,.11,shell,0,-4.21,-1.863,'#594a3f',64);
+  const clasp=new THREE.Group();clasp.position.set(0,0,-5.35);clasp.rotation.x=Math.PI;shell.add(clasp);
+  box(1.23,1.32,.18,m.polish,clasp,0,0,0,.06);
+  for(const side of [-1,1]){
+    box(1.14,.625,.025,m.gold,clasp,0,side*.322,.098,.025);
+    box(.065,.30,.085,m.steel,clasp,side*.631,0,0,.022);
+    cylinder(.045,1.12,m.steel,clasp,0,side*.60,-.045).rotation.y=Math.PI/2;
+  }
+  text('ATELIER',.62,.095,clasp,0,.22,.117,'#63523c',56);
   const crown=new THREE.Group();crown.position.set(2.25,0,-.10);crown.rotation.y=Math.PI/2;shell.add(crown);
   cylinder(.182,.32,m.gold,crown);ring(.184,.148,.029,m.polish,crown,0,0,.17);cylinder(.149,.025,m.gold,crown,0,0,.172);
   for(let i=0;i<40;i++){const a=i*TAU/40;const b=box(.010,.031,.255,m.polish,crown,.181*Math.cos(a),.181*Math.sin(a),0,.003);b.rotation.z=a;}

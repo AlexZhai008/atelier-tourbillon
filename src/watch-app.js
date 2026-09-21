@@ -97,7 +97,15 @@ function initialize(){
   $$('[data-mode]').forEach(b=>b.onclick=()=>mode(b.dataset.mode));
   $('#explode').addEventListener('input',e=>{const previous=state.explodeTarget;setExplosion(Number(e.target.value)/100,previous===0&&Number(e.target.value)>0);});
   $('#glass-toggle').onclick=()=>{state.transparent=!state.transparent;switchState('#glass-toggle',state.transparent);watch.setTransparent(state.transparent);toast(state.transparent?'透明表壳 · 机芯清晰可见':'金属表壳 · 保留镂空表盘');};
-  $('#labels-toggle').onclick=()=>{state.labels=!state.labels;switchState('#labels-toggle',state.labels);$('#labels').hidden=!state.labels;};
+  const labelShortcut=document.createElement('button');labelShortcut.id='labels-shortcut';labelShortcut.type='button';viewport.append(labelShortcut);
+  function syncLabels(){
+    switchState('#labels-toggle',state.labels);$('#labels').hidden=!state.labels;
+    labelShortcut.textContent=state.labels?'隐藏标注':'显示标注';
+    labelShortcut.setAttribute('aria-label',state.labels?'隐藏组件标注':'显示组件标注');
+    labelShortcut.setAttribute('aria-pressed',String(state.labels));
+  }
+  const toggleLabels=()=>{state.labels=!state.labels;syncLabels();};
+  $('#labels-toggle').onclick=toggleLabels;labelShortcut.onclick=toggleLabels;syncLabels();
   function syncMotion(){switchState('#motion-toggle',state.running);$('#movement-status').textContent=state.running?'北京时间 · 实时走时':'机芯暂停 · 指针正常走时';}
   $('#motion-toggle').onclick=()=>{state.running=!state.running;syncMotion();};syncMotion();
   $$('[data-speed]').forEach(b=>b.onclick=()=>{state.speed=Number(b.dataset.speed);$$('[data-speed]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',String(x===b));});});
