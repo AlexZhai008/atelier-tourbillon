@@ -4,7 +4,7 @@ import {geometryTools,batchDetails} from './watch-geometry.js';
 const TAU=Math.PI*2;
 export const PARTS=[
   {id:'crystal',name:'蓝宝石表镜',en:'SAPPHIRE CRYSTAL',text:'高透射、低粗糙度表镜，降低折射对微小机芯结构的模糊。透明中壳与底盖是本模型的展示性改造；参考腕表原款采用金属表壳。',anchor:[-1.65,1.2,.73]},
-  {id:'hands',name:'时分秒指针',en:'HOURS · MINUTES · SECONDS',text:'金质时分针采用拉丝表面、镜面倒角和嵌入式夜光。中央长秒针采用蓝钢针身、明亮中脊与镂空配重，位于时分针上方，1× 速度下 60 秒平滑旋转一周。三根指针跟随统一模拟时钟。',anchor:[.12,.45,.65]},
+  {id:'hands',name:'时分秒指针',en:'HOURS · MINUTES · SECONDS',text:'金质时分针采用拉丝表面、镜面倒角和嵌入式夜光。蓝钢长秒针带明亮中脊，取消尾部圆环。三根指针共用中央轴心与抛光轴帽，分层独立旋转；1× 速度下秒针 60 秒平滑旋转一周。',anchor:[0,0,.66]},
   {id:'dial',name:'立体时标与刻度',en:'APPLIED HOUR MARKERS',text:'黑色分钟圈配立体金属时标，外缘为抛光切面。12 点双时标与五分钟数字加强辨识度；四倍尺寸文字贴图和细分几何支持近距离观察。',anchor:[1.65,1.0,.45]},
   {id:'bridges',name:'深灰镂空桥板',en:'ANTHRACITE BRIDGES',text:'参考江诗丹顿 Overseas 2160 SQ 机芯的深灰镂空结构，采用细拉丝、抛光倒角、红宝石轴承与蓝钢螺钉。桥板路径按可见轮系重建，不是原厂零件测绘。',anchor:[-1.10,.05,.21]},
   {id:'train',name:'发条与传动轮系',en:'BARREL & GEAR TRAIN',text:'黄铜轮系具有细化齿形、圆周加工纹和钢制小齿轴。主轮系以齿数反比交替旋转；后层机板与边缘摆陀增加结构深度。齿形和传动路线为可视化近似。',anchor:[-.62,.84,-.02]},
@@ -151,15 +151,14 @@ export function createWatch({anisotropy=8}={}){
     hands[name]=g;
   }
   hand('hour',1.08,.10,.51);hand('minute',1.56,.068,.56);
-  cylinder(.085,.09,m.polish,groups.hands,0,0,.545);cylinder(.053,.010,m.bridge,groups.hands,0,0,.597);cylinder(.025,.012,m.steel,groups.hands,0,0,.605);
+  // One continuous spindle through all three hand layers, covered by one cap.
+  cylinder(.048,.15,m.steel,groups.hands,0,0,.585);
+  cylinder(.085,.024,m.polish,groups.hands,0,0,.664);
   // Central seconds sits above both hands, with a bright facet for legibility.
   const second=articulated(groups.hands,0,0,.635);
-  const needle=pathShape([[-.018,-.40],[-.018,1.66],[0,1.84],[.018,1.66],[.018,-.40]]);
+  const needle=pathShape([[-.018,-.035],[-.018,1.66],[0,1.84],[.018,1.66],[.018,-.035]]);
   extrude(needle,.012,m.blue,m.steel,second,0,0,0,.003);
   beam(0,.15,0,1.73,.010,.004,.016,m.lume,second);
-  ring(.067,.041,.014,m.polish,second,0,-.29,.009,m.steel);
-  cylinder(.055,.026,m.polish,second,0,0,.018);
-  cylinder(.030,.008,m.blue,second,0,0,.035);
   hands.second=second;
   const offsets={case:-.75,train:0,tourbillon:.30,bridges:.9,dial:1.65,hands:2.4,crystal:3.1};
   const guide=new THREE.Group();root.add(guide);const lineMat=new THREE.LineDashedMaterial({color:0xb7aa86,transparent:true,opacity:.19,dashSize:.06,gapSize:.07});
