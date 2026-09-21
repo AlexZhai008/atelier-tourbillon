@@ -183,7 +183,7 @@ export function createWatch({anisotropy=8}={}){
       cage.rotation.z=-TAU*t/60;balance.rotation.z=Math.sin(t*TAU*2.5)*Math.PI*.76;
       hairspring.rotation.z=Math.sin(t*TAU*2.5)*.13;const pulse=1+.07*Math.sin(t*TAU*2.5);hairspring.scale.set(pulse,pulse,1);
       pallet.rotation.z=Math.sin(t*TAU*2.5)*.18;escape.rotation.z=Math.floor(t*5)*TAU/15;rotor.rotation.z=Math.sin(t*.23)*.35;
-      const time=clockSeconds+t;hands.hour.rotation.z=-TAU*(time%43200)/43200;hands.minute.rotation.z=-TAU*(time%3600)/3600;hands.second.rotation.z=-TAU*(time%60)/60;
+      const time=clockSeconds;hands.hour.rotation.z=-TAU*(time%43200)/43200;hands.minute.rotation.z=-TAU*(time%3600)/3600;hands.second.rotation.z=-TAU*(time%60)/60;
     },
     dispose(){const geometries=new Set(),materials=new Set(),textures=new Set(m.textures);root.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)for(const mat of Array.isArray(o.material)?o.material:[o.material])materials.add(mat);});for(const g of geometries)g.dispose();for(const mat of materials){for(const v of Object.values(mat))if(v?.isTexture)textures.add(v);mat.dispose();}textures.forEach(t=>t.dispose());},
   };

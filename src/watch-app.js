@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createStudio } from './watch-finishing.js';
 import { createWatch, PARTS } from './watch-model.js';
+import { beijingSeconds } from './watch-time.js';
 
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const canvas=$('#canvas'),viewport=$('#viewport');
@@ -13,6 +14,9 @@ catch(error){$('#loading').hidden=true;$('#webgl-error').hidden=false;console.er
 if(renderer)initialize();
 
 function initialize(){
+  const timeHelp=[...document.querySelectorAll('#help-dialog p')].find(p=>p.querySelector('b')?.textContent==='走时');
+  if(timeHelp)timeHelp.innerHTML='<b>走时</b> 时、分、秒针实时显示北京时间（UTC+8），按设备系统时钟校准。暂停及快慢播放仅影响内部机芯演示，三根指针始终正常走时。';
+  document.querySelector('.speed-heading > span').textContent='机芯演示速度';
   renderer.setClearColor(0x111514,0);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.02;renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.transmissionResolutionScale=1;renderer.shadowMap.enabled=true;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(33,1,.04,150);
@@ -27,8 +31,7 @@ function initialize(){
   const front=new THREE.DirectionalLight(0xfff3e0,.6);front.position.set(1,-5,6);scene.add(front);
   const watch=createWatch({anisotropy:renderer.capabilities.getMaxAnisotropy()});scene.add(watch.root);
   const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.dampingFactor=.075;controls.minDistance=3;controls.maxDistance=35;controls.enablePan=true;controls.maxPolarAngle=Math.PI;controls.target.set(0,0,0);
-  // Presentation starts at the conventional 10:08 pose so the tourbillon stays visible.
-  const clockSeconds=10*3600+8*60;
+  // Civil time stays live even while the educational mechanism is slowed or paused.
   let mobile=false,width=1,height=1,transition=null,last=performance.now(),tourTime=0,frames=0,fpsTime=last,labelCounter=0;
   let toastTimer;const keys=new Set();const raycaster=new THREE.Raycaster();const pointer=new THREE.Vector2();
   const flyEuler=new THREE.Euler(0,0,0,'YXZ');const direction=new THREE.Vector3();const right=new THREE.Vector3();const world=new THREE.Vector3();
@@ -95,7 +98,7 @@ function initialize(){
   $('#explode').addEventListener('input',e=>{const previous=state.explodeTarget;setExplosion(Number(e.target.value)/100,previous===0&&Number(e.target.value)>0);});
   $('#glass-toggle').onclick=()=>{state.transparent=!state.transparent;switchState('#glass-toggle',state.transparent);watch.setTransparent(state.transparent);toast(state.transparent?'透明表壳 · 机芯清晰可见':'金属表壳 · 保留镂空表盘');};
   $('#labels-toggle').onclick=()=>{state.labels=!state.labels;switchState('#labels-toggle',state.labels);$('#labels').hidden=!state.labels;};
-  function syncMotion(){switchState('#motion-toggle',state.running);$('#movement-status').textContent=state.running?'机芯正在运转':'机芯已暂停';}
+  function syncMotion(){switchState('#motion-toggle',state.running);$('#movement-status').textContent=state.running?'北京时间 · 实时走时':'机芯暂停 · 指针正常走时';}
   $('#motion-toggle').onclick=()=>{state.running=!state.running;syncMotion();};syncMotion();
   $$('[data-speed]').forEach(b=>b.onclick=()=>{state.speed=Number(b.dataset.speed);$$('[data-speed]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',String(x===b));});});
   $$('[data-finish]').forEach(b=>b.onclick=()=>{state.finish=b.dataset.finish;watch.setFinish(state.finish);$('#finish-name').textContent={gold:'香槟金',silver:'铂银',dark:'曜黑'}[state.finish];$$('[data-finish]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',String(x===b));});});
@@ -167,7 +170,7 @@ function initialize(){
     if(state.running)state.simTime+=elapsed*state.speed;
     const blend=reduced?1:1-Math.exp(-dt*5);state.explosion+=(state.explodeTarget-state.explosion)*blend;
     if(Math.abs(state.explodeTarget-state.explosion)<.0001)state.explosion=state.explodeTarget;
-    watch.update(state.simTime,state.explosion,clockSeconds);
+    watch.update(state.simTime,state.explosion,beijingSeconds());
     if(state.mode==='flight')updateFlight(dt);
     else if(state.tour){
       tourTime+=dt;const a=tourTime*.16,rad=mobile?22:12.5;const target=new THREE.Vector3(0,0,state.explosion*1.4);
@@ -180,7 +183,7 @@ function initialize(){
     renderer.render(scene,camera);if(++labelCounter%2===0)updateLabels();
     frames++;if(now-fpsTime>1000){$('#fps').textContent=`${Math.round(frames*1000/(now-fpsTime))} FPS`;frames=0;fpsTime=now;}
   }
-  watch.update(0,0,clockSeconds);renderer.render(scene,camera);$('#loading').classList.add('done');requestAnimationFrame(frame);
+  watch.update(0,0,beijingSeconds());renderer.render(scene,camera);$('#loading').classList.add('done');requestAnimationFrame(frame);
   canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();$('#webgl-error').hidden=false;$('#webgl-error h2').textContent='3D 渲染已中断';});
   // Read-only diagnostics make animation timing and rendering verifiable.
   window.__watchDiagnostics=()=>({state:{...state},camera:camera.position.toArray(),target:controls.target.toArray(),renderer:{calls:renderer.info.render.calls,triangles:renderer.info.render.triangles},parts:PARTS.length,gearAngles:watch.moving.map(x=>x.object.rotation.z),cageAngle:watch.cage.rotation.z,balanceAngle:watch.balance.rotation.z,handAngles:Object.fromEntries(Object.entries(watch.hands).map(([k,v])=>[k,v.rotation.z])),layers:Object.fromEntries(Object.entries(watch.groups).map(([k,v])=>[k,v.position.z]))});
