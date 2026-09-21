@@ -4,7 +4,7 @@ import {geometryTools,batchDetails} from './watch-geometry.js';
 const TAU=Math.PI*2;
 export const PARTS=[
   {id:'crystal',name:'蓝宝石表镜',en:'SAPPHIRE CRYSTAL',text:'高透射、低粗糙度表镜，降低折射对微小机芯结构的模糊。透明中壳与底盖是本模型的展示性改造；参考腕表原款采用金属表壳。',anchor:[-1.65,1.2,.73]},
-  {id:'hands',name:'切面时分指针',en:'FACETED GOLD HANDS',text:'借鉴 Overseas 的金质棒形指针，分别建立拉丝上表面、镜面倒角和嵌入式夜光。时、分针保持 12 小时与 60 分钟一周的比例，小秒显示位于六点位陀飞轮。',anchor:[.12,.45,.60]},
+  {id:'hands',name:'时分秒指针',en:'HOURS · MINUTES · SECONDS',text:'金质时分针采用拉丝表面、镜面倒角和嵌入式夜光。中央长秒针采用蓝钢针身、明亮中脊与镂空配重，位于时分针上方，1× 速度下 60 秒平滑旋转一周。三根指针跟随统一模拟时钟。',anchor:[.12,.45,.65]},
   {id:'dial',name:'立体时标与刻度',en:'APPLIED HOUR MARKERS',text:'黑色分钟圈配立体金属时标，外缘为抛光切面。12 点双时标与五分钟数字加强辨识度；四倍尺寸文字贴图和细分几何支持近距离观察。',anchor:[1.65,1.0,.45]},
   {id:'bridges',name:'深灰镂空桥板',en:'ANTHRACITE BRIDGES',text:'参考江诗丹顿 Overseas 2160 SQ 机芯的深灰镂空结构，采用细拉丝、抛光倒角、红宝石轴承与蓝钢螺钉。桥板路径按可见轮系重建，不是原厂零件测绘。',anchor:[-1.10,.05,.21]},
   {id:'train',name:'发条与传动轮系',en:'BARREL & GEAR TRAIN',text:'黄铜轮系具有细化齿形、圆周加工纹和钢制小齿轴。主轮系以齿数反比交替旋转；后层机板与边缘摆陀增加结构深度。齿形和传动路线为可视化近似。',anchor:[-.62,.84,-.02]},
@@ -152,7 +152,15 @@ export function createWatch({anisotropy=8}={}){
   }
   hand('hour',1.08,.10,.51);hand('minute',1.56,.068,.56);
   cylinder(.085,.09,m.polish,groups.hands,0,0,.545);cylinder(.053,.010,m.bridge,groups.hands,0,0,.597);cylinder(.025,.012,m.steel,groups.hands,0,0,.605);
-  const second=articulated(tour,0,-1.02,.299);beam(0,.39,0,.608,.012,.009,0,m.blue,second);cylinder(.022,.010,m.polish,second,0,.596,.007);hands.second=second;
+  // Central seconds sits above both hands, with a bright facet for legibility.
+  const second=articulated(groups.hands,0,0,.635);
+  const needle=pathShape([[-.018,-.40],[-.018,1.66],[0,1.84],[.018,1.66],[.018,-.40]]);
+  extrude(needle,.012,m.blue,m.steel,second,0,0,0,.003);
+  beam(0,.15,0,1.73,.010,.004,.016,m.lume,second);
+  ring(.067,.041,.014,m.polish,second,0,-.29,.009,m.steel);
+  cylinder(.055,.026,m.polish,second,0,0,.018);
+  cylinder(.030,.008,m.blue,second,0,0,.035);
+  hands.second=second;
   const offsets={case:-.75,train:0,tourbillon:.30,bridges:.9,dial:1.65,hands:2.4,crystal:3.1};
   const guide=new THREE.Group();root.add(guide);const lineMat=new THREE.LineDashedMaterial({color:0xb7aa86,transparent:true,opacity:.19,dashSize:.06,gapSize:.07});
   for(const x of [-1.5,1.5]){const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x,0,-1.25),new THREE.Vector3(x,0,6.86)]);const l=new THREE.Line(g,lineMat);l.computeLineDistances();guide.add(l);}guide.visible=false;
@@ -176,7 +184,7 @@ export function createWatch({anisotropy=8}={}){
       cage.rotation.z=-TAU*t/60;balance.rotation.z=Math.sin(t*TAU*2.5)*Math.PI*.76;
       hairspring.rotation.z=Math.sin(t*TAU*2.5)*.13;const pulse=1+.07*Math.sin(t*TAU*2.5);hairspring.scale.set(pulse,pulse,1);
       pallet.rotation.z=Math.sin(t*TAU*2.5)*.18;escape.rotation.z=Math.floor(t*5)*TAU/15;rotor.rotation.z=Math.sin(t*.23)*.35;
-      const time=clockSeconds+t;hands.hour.rotation.z=-TAU*(time%43200)/43200;hands.minute.rotation.z=-TAU*(time%3600)/3600;hands.second.rotation.z=-TAU*t/60;
+      const time=clockSeconds+t;hands.hour.rotation.z=-TAU*(time%43200)/43200;hands.minute.rotation.z=-TAU*(time%3600)/3600;hands.second.rotation.z=-TAU*(time%60)/60;
     },
     dispose(){const geometries=new Set(),materials=new Set(),textures=new Set(m.textures);root.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)for(const mat of Array.isArray(o.material)?o.material:[o.material])materials.add(mat);});for(const g of geometries)g.dispose();for(const mat of materials){for(const v of Object.values(mat))if(v?.isTexture)textures.add(v);mat.dispose();}textures.forEach(t=>t.dispose());},
   };

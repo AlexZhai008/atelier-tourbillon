@@ -9,6 +9,11 @@ watch.update(0,0,0);assert.ok(Object.values(watch.groups).every(g=>g.position.z=
 watch.update(60,1,0);near(watch.cage.rotation.z,-tau,'60 second cage revolution');
 assert.equal(new Set(Object.values(watch.groups).map(g=>g.position.z)).size,7);
 watch.update(1,.5,0);near(watch.hands.second.rotation.z,-tau/60,'Second hand');near(watch.hands.minute.rotation.z,-tau/3600,'Minute hand');near(watch.hands.hour.rotation.z,-tau/43200,'Hour hand');
+assert.equal(watch.hands.second.parent,watch.groups.hands,'Central seconds explodes with the other hands');
+near(watch.hands.second.position.x,0,'Seconds centered X');near(watch.hands.second.position.y,0,'Seconds centered Y');
+assert.ok(watch.hands.second.position.z>watch.hands.minute.position.z,'Seconds above minute hand');
+watch.update(1,0,30);near(watch.hands.second.rotation.z,-tau*31/60,'Seconds uses shared clock offset');
+watch.update(61,0,30);near(watch.hands.second.rotation.z,-tau*31/60,'Seconds repeats after 60 seconds');
 watch.update(1/10,0,0);near(watch.balance.rotation.z,Math.PI*.76,'2.5 Hz balance peak');
 for(let i=1;i<5;i++){near(watch.moving[i-1].rate*watch.moving[i-1].teeth,-watch.moving[i].rate*watch.moving[i].teeth,'Adjacent gear tooth-speed ratio');}
 watch.update(0,0,0);assert.ok(Object.values(watch.groups).every(g=>g.position.z===0));
