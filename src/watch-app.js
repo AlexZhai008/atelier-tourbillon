@@ -3,11 +3,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createStudio } from './watch-finishing.js';
 import { createWatch, PARTS } from './watch-model.js';
 import { beijingSeconds } from './watch-time.js';
+import { advanceClock } from './watch-movement.js';
 
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const canvas=$('#canvas'),viewport=$('#viewport');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const state={mode:'assembled',running:!reduced,labels:true,transparent:true,speed:1,explosion:0,explodeTarget:0,tour:false,selected:null,simTime:0,finish:'gold',quality:'high'};
+const movementClock={mode:'live',time:beijingSeconds(),running:true,speed:1};
+state.running=true;
 let renderer;
 try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});}
 catch(error){$('#loading').hidden=true;$('#webgl-error').hidden=false;console.error(error);}
@@ -15,7 +18,7 @@ if(renderer)initialize();
 
 function initialize(){
   const timeHelp=[...document.querySelectorAll('#help-dialog p')].find(p=>p.querySelector('b')?.textContent==='走时');
-  if(timeHelp)timeHelp.innerHTML='<b>走时</b> 时、分、秒针实时显示北京时间（UTC+8），按设备系统时钟校准。暂停及快慢播放仅影响内部机芯演示，三根指针始终正常走时。';
+  if(timeHelp)timeHelp.innerHTML='<b>走时</b> 默认同步北京时间。选择快慢速或暂停会进入机械演示，轮系、陀飞轮和三根指针统一变速。点击“恢复北京时间”重新校时。摆轮与擒纵叉本来就应往复摆动；高速时显示平均姿态，避免屏幕采样造成假反转。';
   document.querySelector('.speed-heading > span').textContent='机芯演示速度';
   renderer.setClearColor(0x111514,0);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.02;renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.transmissionResolutionScale=1;renderer.shadowMap.enabled=true;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -106,9 +109,20 @@ function initialize(){
   }
   const toggleLabels=()=>{state.labels=!state.labels;syncLabels();};
   $('#labels-toggle').onclick=toggleLabels;labelShortcut.onclick=toggleLabels;syncLabels();
-  function syncMotion(){switchState('#motion-toggle',state.running);$('#movement-status').textContent=state.running?'北京时间 · 实时走时':'机芯暂停 · 指针正常走时';}
-  $('#motion-toggle').onclick=()=>{state.running=!state.running;syncMotion();};syncMotion();
-  $$('[data-speed]').forEach(b=>b.onclick=()=>{state.speed=Number(b.dataset.speed);$$('[data-speed]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',String(x===b));});});
+  const timing=document.createElement('section');timing.className='timing-panel';
+  timing.innerHTML='<output id="clock-readout" aria-label="当前表盘时间"></output><p id="clock-mode"></p><button id="clock-live" type="button">恢复北京时间</button><details><summary>查看传动关系</summary><p>发条盒 → 分轮（1 小时/圈） → 三轮（7.5 分钟/圈） → 四轮（60 秒/圈）</p><p>四轮 → 等比中间轮 → 中央秒轴；分轮 → 等比中间轮 → 分针套筒。</p><p>分针轴的 12 齿小齿轮 → 48 齿跨轮 → 同轴 16 齿小齿轮 → 48 齿时轮：共减速 12 倍。</p><p>四轮同时驱动 60 秒陀飞轮框架。15 齿擒纵轮按平均 6 秒/圈连续显示；2.5 Hz 摆轮、擒纵叉往复调速。</p><p>蓝色小点是旋转方向识别标记。高速下摆轮以平均姿态显示；轮系不会因此减速。外围半圆摆陀属于自动上链机构，不是传动齿轮。</p><p>这是齿比一致的运动学示意；擒纵接触、陀飞轮内部固定轮与发条扭矩未做动力学仿真。</p><button id="show-drive" type="button">近看传动轮系 ↗</button></details>';
+  $('.quality-section').before(timing);
+  function syncMotion(){
+    switchState('#motion-toggle',state.running);movementClock.running=state.running;movementClock.speed=state.speed;
+    $('#movement-status').textContent=movementClock.mode==='live'?'北京时间 · 联动走时':state.running?`机械演示 · ${state.speed}×`:'机械演示 · 已暂停';
+    $('#clock-mode').textContent=movementClock.mode==='live'?'北京时间 UTC+8':state.running?`演示时间 · 全机芯 ${state.speed}× 联动`:'演示时间 · 全机芯暂停';
+    $('#clock-live').hidden=movementClock.mode==='live';
+    $$('[data-speed]').forEach(b=>{const active=Number(b.dataset.speed)===state.speed;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
+  }
+  $('#motion-toggle').onclick=()=>{movementClock.mode='demo';state.running=!state.running;syncMotion();};
+  $$('[data-speed]').forEach(b=>b.onclick=()=>{movementClock.mode='demo';state.speed=Number(b.dataset.speed);state.running=true;syncMotion();});
+  $('#clock-live').onclick=()=>{movementClock.mode='live';state.speed=1;state.running=true;movementClock.time=beijingSeconds();syncMotion();};
+  $('#show-drive').onclick=()=>{select('train');$('#focus-part').click();};syncMotion();
   $$('[data-finish]').forEach(b=>b.onclick=()=>{state.finish=b.dataset.finish;watch.setFinish(state.finish);$('#finish-name').textContent={gold:'香槟金',silver:'铂银',dark:'曜黑'}[state.finish];$$('[data-finish]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',String(x===b));});});
   $('#tour-button').onclick=()=>{
     if(state.tour){stopTour();return;}
@@ -175,10 +189,12 @@ function initialize(){
   function frame(now){
     requestAnimationFrame(frame);const elapsed=Math.max(0,(now-last)/1000),dt=Math.min(elapsed,.06);last=now;if(document.hidden)return;
     // Keep physical timing independent of render quality; clamp only camera interpolation.
-    if(state.running)state.simTime+=elapsed*state.speed;
+    state.simTime=advanceClock(movementClock,elapsed,beijingSeconds());
+    const displayed=Math.floor(state.simTime)%86400;
+    $('#clock-readout').textContent=[Math.floor(displayed/3600),Math.floor(displayed/60)%60,displayed%60].map(v=>String(v).padStart(2,'0')).join(':');
     const blend=reduced?1:1-Math.exp(-dt*5);state.explosion+=(state.explodeTarget-state.explosion)*blend;
     if(Math.abs(state.explodeTarget-state.explosion)<.0001)state.explosion=state.explodeTarget;
-    watch.update(state.simTime,state.explosion,beijingSeconds());
+    watch.update(state.simTime,state.explosion,{speed:state.running?state.speed:0,frameSeconds:elapsed});
     if(state.mode==='flight')updateFlight(dt);
     else if(state.tour){
       tourTime+=dt;const a=tourTime*.16,rad=mobile?22:12.5;const target=new THREE.Vector3(0,0,state.explosion*1.4);
@@ -191,7 +207,7 @@ function initialize(){
     renderer.render(scene,camera);if(++labelCounter%2===0)updateLabels();
     frames++;if(now-fpsTime>1000){$('#fps').textContent=`${Math.round(frames*1000/(now-fpsTime))} FPS`;frames=0;fpsTime=now;}
   }
-  watch.update(0,0,beijingSeconds());renderer.render(scene,camera);$('#loading').classList.add('done');requestAnimationFrame(frame);
+  watch.update(movementClock.time,0);renderer.render(scene,camera);$('#loading').classList.add('done');requestAnimationFrame(frame);
   canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();$('#webgl-error').hidden=false;$('#webgl-error h2').textContent='3D 渲染已中断';});
   // Read-only diagnostics make animation timing and rendering verifiable.
   window.__watchDiagnostics=()=>({state:{...state},camera:camera.position.toArray(),target:controls.target.toArray(),renderer:{calls:renderer.info.render.calls,triangles:renderer.info.render.triangles},parts:PARTS.length,gearAngles:watch.moving.map(x=>x.object.rotation.z),cageAngle:watch.cage.rotation.z,balanceAngle:watch.balance.rotation.z,handAngles:Object.fromEntries(Object.entries(watch.hands).map(([k,v])=>[k,v.rotation.z])),layers:Object.fromEntries(Object.entries(watch.groups).map(([k,v])=>[k,v.position.z]))});

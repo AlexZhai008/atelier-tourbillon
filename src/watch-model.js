@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {createFinishes} from './watch-finishing.js';
 import {geometryTools,batchDetails} from './watch-geometry.js';
 import {createBracelet} from './watch-bracelet.js';
+import {RATES,balanceVisibility} from './watch-movement.js';
 const TAU=Math.PI*2;
 export const PARTS=[
   {id:'crystal',name:'蓝宝石表镜',en:'SAPPHIRE CRYSTAL',text:'高透射、低粗糙度表镜，降低折射对微小机芯结构的模糊。透明中壳与底盖是本模型的展示性改造；参考腕表原款采用金属表壳。',anchor:[-1.65,1.2,.73]},
@@ -57,28 +58,60 @@ export function createWatch({anisotropy=8}={}){
   // The main train is modeled as actual perforated wheels rather than flat disks.
   function gear(radius,teeth,x,y,z,rate,parent=groups.train,phase=0){
     const g=articulated(parent,x,y,z);const s=new THREE.Shape();
-    const profile=[-.024,-.024,-.020,.008,.018,.018,.008,-.020];
+    const tooth=radius/teeth;
+    const profile=[-1.1,-1.1,-.8,.4,.8,.8,.4,-.8].map(v=>v*tooth);
     for(let i=0;i<teeth*8;i++){const a=i*TAU/(teeth*8),r=radius+profile[i%8];if(i)s.lineTo(r*Math.cos(a),r*Math.sin(a));else s.moveTo(r*Math.cos(a),r*Math.sin(a));}s.closePath();
     const spokes=radius>.32?5:4,inner=radius*.22,outer=radius*.77;
     for(let j=0;j<spokes;j++){const a=j*TAU/spokes+.15,b=(j+1)*TAU/spokes-.15;const hole=new THREE.Path();hole.moveTo(inner*Math.cos(a),inner*Math.sin(a));hole.lineTo(outer*Math.cos(a),outer*Math.sin(a));hole.absarc(0,0,outer,a,b,false);hole.lineTo(inner*Math.cos(b),inner*Math.sin(b));hole.absarc(0,0,inner,b,a,true);hole.closePath();s.holes.push(hole);}
     extrude(s,.037,m.wheel,m.polish,g,0,0,0,.0035);torus(radius*.84,.0045,m.polish,g,0,0,.024);
     cylinder(radius*.18,.052,m.wheel,g);cylinder(.025,.19,m.steel,g,0,0,.018);
     for(let i=0;i<10;i++){const a=i*TAU/10;const b=box(.012,.025,.053,m.steel,g,.047*Math.cos(a),.047*Math.sin(a),.06,.002);b.rotation.z=a;}
-    moving.push({object:g,rate,phase,teeth});g.rotation.z=phase;return g;
+    // One unique witness mark makes forward rotation readable on repeated spokes.
+    cylinder(Math.min(.017,radius*.07),.008,m.blue,g,0,radius*.83,.034);
+    moving.push({object:g,rate,phase,teeth,radius});g.rotation.z=phase;return g;
   }
   const train=groups.train;ring(1.72,1.50,.041,m.bridge,train,0,0,-.20,m.steel);
   // Skeleton backplate with windows keeps depth visible through both sides.
   const plate=new THREE.Shape();plate.absarc(0,0,1.70,0,TAU,false);
   [[-.64,.65,.67],[.63,.62,.54],[0,-1.01,.665],[1.1,-.24,.26],[-1.16,-.24,.25]].forEach(([x,y,r])=>{const h=new THREE.Path();h.absarc(x,y,r,0,TAU,true);plate.holes.push(h);});
   extrude(plate,.035,m.bridge,m.steel,train,0,0,-.22,.003);
-  const spec=[{r:.62,n:62,x:-.63,y:.70},{r:.47,n:47,x:.46,y:.70},{r:.30,n:30,x:1.06,y:.218},{r:.245,n:24.5,x:.885,y:-.298},{r:.295,n:29.5,x:.414,y:-.562}];
-  // integer tooth counts with matching pitch radii (module .02).
-  spec[3].n=25;spec[3].r=.25;spec[4].n=29;spec[4].r=.29;
-  spec.forEach((s,i)=>{gear(s.r,s.n,s.x,s.y,-.07,(i%2?-1:1)*TAU/60*29/s.n,train,i*.14);jewel(train,s.x,s.y,.056,.029);});
-  ring(.48,.453,.023,m.polish,train,-.63,.70,-.099);
-  const spring=[];for(let i=0;i<=768;i++){const t=i/768,a=t*TAU*7,r=.055+t*.38;spring.push(new THREE.Vector3(-.63+r*Math.cos(a),.70+r*Math.sin(a),-.121));}
+  const spec=[{id:'barrel',r:.62,n:80,x:-.85,y:.80,z:-.07},
+    {id:'minute',r:.48,n:80,x:-.137,y:.80,z:0},
+    {id:'third',r:.30,n:75,x:.403,y:.80,z:.07},
+    {id:'second',r:Math.hypot(.403,.46)/4,n:30,x:.403,y:.46,z:.14}];
+  const drive={},meshes=[];
+  function driveGear(id,r,n,x,y,z,rate){const g=gear(r,n,x,y,z,rate);g.name=id;drive[id]=g;return g;}
+  function pair(a,b){meshes.push([a,b]);}
+  spec.forEach(s=>driveGear(s.id,s.r,s.n,s.x,s.y,s.z,RATES[s.id]));
+  for(let i=1;i<spec.length;i++){
+    const a=spec[i-1],b=spec[i],n=[12,10,10][i-1],r=a.r*n/a.n;
+    driveGear(b.id+'Pinion',r,n,b.x,b.y,a.z,RATES[b.id]);pair(a.id,b.id+'Pinion');
+    cylinder(.025,.15,m.steel,train,b.x,b.y,(a.z+b.z)/2);
+  }
+  function relay(prefix,source,rate,z){
+    const r=Math.hypot(source.x,source.y)/4;
+    driveGear(prefix+'Input',r,30,source.x,source.y,z,rate);
+    driveGear(prefix+'Idler',r,30,source.x/2,source.y/2,z,-rate);
+    driveGear(prefix+'Output',r,30,0,0,z,rate);
+    pair(prefix+'Input',prefix+'Idler');pair(prefix+'Idler',prefix+'Output');
+  }
+  relay('minuteRelay',spec[1],RATES.minute,.23);
+  relay('secondRelay',spec[3],RATES.second,.14);
+  driveGear('cannon',.10,12,0,0,.31,RATES.minute);
+  driveGear('motionWheel',.40,48,-.50,0,.31,-RATES.minute/4);pair('cannon','motionWheel');
+  driveGear('motionPinion',.125,16,-.50,0,.39,-RATES.minute/4);
+  driveGear('hourWheel',.375,48,0,0,.39,RATES.hour);pair('motionPinion','hourWheel');
+  // Concentric output sleeves terminate immediately below their respective hands.
+  ring(.055,.041,.12,m.polish,train,0,0,.445);
+  ring(.038,.025,.24,m.steel,train,0,0,.435);
+  cylinder(.020,.50,m.blue,train,0,0,.38);
+  driveGear('cageInput',.255,30,0,0,-.14,RATES.second);
+  driveGear('cageIdler',.255,30,0,-.51,-.14,-RATES.second);
+  driveGear('cageOutput',.255,30,0,-1.02,-.14,RATES.second);
+  pair('cageInput','cageIdler');pair('cageIdler','cageOutput');
+  ring(.48,.453,.023,m.polish,train,-.85,.80,-.099);
+  const spring=[];for(let i=0;i<=768;i++){const t=i/768,a=t*TAU*7,r=.055+t*.38;spring.push(new THREE.Vector3(-.85+r*Math.cos(a),.80+r*Math.sin(a),-.121));}
   mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(spring),768,.0042,6,false),m.steel,train);
-  gear(.22,22,-1.10,-.18,-.103,-TAU/110);gear(.265,27,-1.29,.265,-.10,TAU/110*22/27);
   for(let i=0;i<18;i++){const a=i*TAU/18;screw(train,1.615*Math.cos(a),1.615*Math.sin(a),-.164,.022);}
   // Peripheral rotor is visible from the back rather than hiding the skeleton.
   const rotor=articulated(train,0,0,-.31);const rotorShape=new THREE.Shape();rotorShape.absarc(0,0,1.75,.15,Math.PI+.10,false);rotorShape.absarc(0,0,1.58,Math.PI+.10,.15,true);rotorShape.closePath();extrude(rotorShape,.055,m.gold,m.polish,rotor,0,0,0,.006);
@@ -91,15 +124,14 @@ export function createWatch({anisotropy=8}={}){
     for(let i=48;i>=0;i--){const t=i/48,p=curve.getPoint(t),v=curve.getTangent(t);contour.push([p.x+v.y*width/2,p.y-v.x*width/2]);}
     extrude(pathShape(contour),.053,m.bridge,m.polish,bridges,0,0,z,.010);
   }
-  bridge([[-1.49,1.00],[-1.21,.87],[-.87,.72],[-.63,.70]],.15,.17);
-  bridge([[-.63,.70],[-.53,.32],[-.74,.05],[-1.25,-.20],[-1.53,-.45]],.15,.15);
-  bridge([[.44,1.52],[.33,1.20],[.46,.70],[.86,.53],[1.06,.218]],.16,.18);
-  bridge([[.46,.70],[1.10,.93],[1.47,.75]],.16,.13);
-  bridge([[1.06,.218],[1.36,.05],[1.50,-.24]],.16,.14);
-  bridge([[.885,-.298],[1.03,-.68],[1.26,-1.06]],.16,.16);
-  bridge([[.414,-.562],[.61,-.61],[.80,-.77]],.15,.12);
+  bridge([[-1.49,1.00],[-1.21,.87],[-.85,.80]],.18,.14);
+  bridge([[-.85,.80],[-1.03,.35],[-1.25,-.20],[-1.53,-.45]],.18,.12);
+  bridge([[.44,1.52],[.16,1.22],[-.137,.80]],.19,.12);
+  bridge([[.403,.80],[1.10,.93],[1.47,.75]],.19,.12);
+  bridge([[.403,.46],[1.16,.35],[1.50,-.24]],.19,.12);
+  bridge([[1.50,-.24],[1.38,-.68],[1.26,-1.06]],.16,.14);
   bridge([[-1.47,-.69],[-1.17,-1.12],[-.84,-1.36]],.12,.13);
-  for(const s of spec){ring(.100,.049,.042,m.bridge,bridges,s.x,s.y,.166,m.polish);jewel(bridges,s.x,s.y,.203,.028);}
+  for(const s of spec){ring(.085,.043,.042,m.bridge,bridges,s.x,s.y,.218,m.polish);jewel(bridges,s.x,s.y,.248,.025);}
   [[-1.49,1],[-1.53,-.45],[.44,1.52],[1.47,.75],[1.50,-.24],[1.26,-1.06],[-.84,-1.36]].forEach(([x,y])=>screw(bridges,x,y,.20,.035));
   // Pierced bridge sections, recessed locating holes and polished countersinks.
   function piercedPlate(points,holes,z){
@@ -131,7 +163,8 @@ export function createWatch({anisotropy=8}={}){
   for(let i=0;i<=1400;i++){const t=i/1400,a=t*TAU*9.5,r=.039+t*.326;spiral.push(new THREE.Vector3(r*Math.cos(a),r*Math.sin(a),.109));}
   mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(spiral),1400,.0033,6,false),m.blue,hairspring);
   jewel(cage,0,0,.267,.032);
-  const escape=gear(.088,15,.315,.17,-.04,TAU/3,cage);const pallet=articulated(cage,.16,.18,.028);
+  const escape=gear(.088,15,.315,.17,-.04,RATES.escape,cage);escape.name='escape';drive.escape=escape;
+  const pallet=articulated(cage,.16,.18,.028);
   beam(-.075,-.02,.075,.02,.018,.015,0,m.steel,pallet);box(.023,.018,.015,m.ruby,pallet,-.07,-.019,.003,.002);box(.023,.018,.015,m.ruby,pallet,.07,.019,.003,.002);
 
   const hands={};
@@ -156,6 +189,14 @@ export function createWatch({anisotropy=8}={}){
   const guide=new THREE.Group();root.add(guide);const lineMat=new THREE.LineDashedMaterial({color:0xb7aa86,transparent:true,opacity:.19,dashSize:.06,gapSize:.07});
   for(const x of [-1.5,1.5]){const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x,0,-1.25),new THREE.Vector3(x,0,6.86)]);const l=new THREE.Line(g,lineMat);l.computeLineDistances();guide.add(l);}guide.visible=false;
 
+  // Set tooth-gap phases at each mesh. Compound wheels share speed, with their
+  // own fixed mounting phase; hand zero positions remain independent of teeth.
+  for(const [a,b] of meshes){
+    const ga=moving.find(g=>g.object===drive[a]),gb=moving.find(g=>g.object===drive[b]);
+    const bearing=Math.atan2(gb.object.position.y-ga.object.position.y,gb.object.position.x-ga.object.position.x);
+    gb.phase=((ga.teeth+gb.teeth)*bearing+gb.teeth*Math.PI-Math.PI-ga.teeth*ga.phase)/gb.teeth;
+  }
+  moving.forEach(g=>{g.object.userData.mountingPhase=g.phase;});
   batchDetails(root);
   const glassMeshes=[];root.traverse(o=>{if(o.isMesh&&!Array.isArray(o.material)&&o.material.transmission>0){o.userData.originalGlass=o.material;glassMeshes.push(o);}});
   let selectedMaterials=[];
@@ -166,16 +207,21 @@ export function createWatch({anisotropy=8}={}){
     });
   }
   function setFinish(mode){const colors=mode==='silver'?[0xb7c0c7,0xe5e9ed]:mode==='dark'?[0x454b51,0xa1aab1]:[0xc9a184,0xe6c3a1];m.gold.color.set(colors[0]);m.polish.color.set(colors[1]);root.traverse(o=>{if(o.isMesh)for(const mat of Array.isArray(o.material)?o.material:[o.material]){if(mat.name===m.gold.name)mat.color.copy(m.gold.color);if(mat.name===m.polish.name)mat.color.copy(m.polish.color);}});}
-  return {root,groups,anchors,moving,cage,balance,hairspring,hands,select,setFinish,
+  return {root,groups,anchors,moving,cage,balance,hairspring,hands,drive,meshes,select,setFinish,
     setTransparent(value){glassMeshes.forEach(o=>o.material=value?o.userData.originalGlass:m.gold);groups.crystal.visible=value;},
-    update(t,explosion,clockSeconds){
+    update(t,explosion,{speed=1,frameSeconds=1/60}={}){
       for(const [id,g] of Object.entries(groups))g.position.z=offsets[id]*explosion*1.65;
       guide.visible=explosion>.025;lineMat.opacity=explosion*.20;
       moving.forEach(g=>g.object.rotation.z=g.phase+t*g.rate);
-      cage.rotation.z=-TAU*t/60;balance.rotation.z=Math.sin(t*TAU*2.5)*Math.PI*.76;
-      hairspring.rotation.z=Math.sin(t*TAU*2.5)*.13;const pulse=1+.07*Math.sin(t*TAU*2.5);hairspring.scale.set(pulse,pulse,1);
-      pallet.rotation.z=Math.sin(t*TAU*2.5)*.18;escape.rotation.z=Math.floor(t*5)*TAU/15;rotor.rotation.z=Math.sin(t*.23)*.35;
-      const time=clockSeconds;hands.hour.rotation.z=-TAU*(time%43200)/43200;hands.minute.rotation.z=-TAU*(time%3600)/3600;hands.second.rotation.z=-TAU*(time%60)/60;
+      const resolved=balanceVisibility(speed,frameSeconds),oscillation=Math.sin(t*TAU*2.5)*resolved;
+      cage.rotation.z=RATES.second*t;balance.rotation.z=oscillation*Math.PI*.76;
+      hairspring.rotation.z=oscillation*.13;const pulse=1+.07*oscillation;hairspring.scale.set(pulse,pulse,1);
+      pallet.rotation.z=oscillation*.18;
+      // The peripheral winding rotor is not a driven gear; keep it at rest.
+      rotor.rotation.z=0;
+      hands.hour.rotation.z=drive.hourWheel.rotation.z-drive.hourWheel.userData.mountingPhase;
+      hands.minute.rotation.z=drive.cannon.rotation.z-drive.cannon.userData.mountingPhase;
+      hands.second.rotation.z=drive.secondRelayOutput.rotation.z-drive.secondRelayOutput.userData.mountingPhase;
     },
     dispose(){const geometries=new Set(),materials=new Set(),textures=new Set(m.textures);root.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)for(const mat of Array.isArray(o.material)?o.material:[o.material])materials.add(mat);});for(const g of geometries)g.dispose();for(const mat of materials){for(const v of Object.values(mat))if(v?.isTexture)textures.add(v);mat.dispose();}textures.forEach(t=>t.dispose());},
   };
