@@ -87,3 +87,10 @@ dialog small,.reference-credit{font-size:14px;color:#acbda3}
 }
 @media(min-width:901px) and (max-height:690px){body{overflow-y:auto}.intro .finish{display:none}}
 @media(min-width:901px) and (min-height:691px) and (max-height:760px){.finish .tiny{display:none}.finish>div{margin-top:0}}
+
+/* The top navigation is the single view switcher; keep the footer editorial and balanced. */
+footer{justify-content:flex-end}
+.view-tabs{display:none}
+.footer-note{position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;text-align:center}
+@media(max-width:1150px){.footer-note{display:block}}
+@media(max-width:900px){footer{height:62px;min-height:62px}.view-tabs{display:flex}.footer-note{display:none}}
