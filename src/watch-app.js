@@ -173,17 +173,18 @@ function initialize(){
       const isImportant=['crystal','train','tourbillon','case'].includes(part.id)||state.selected===part.id||state.explosion>.25;
       let visible=isImportant&&world.z>-1&&world.z<1&&distance>1.2&&facing>-.1;
       if(!state.transparent&&part.id==='crystal')visible=false;
-      const labelWidth=part.id==='case'?135:part.id==='train'?137:120;
+      label.hidden=false;
+      const labelWidth=label.offsetWidth,labelHeight=label.offsetHeight;
       const offsetX=part.id==='case'?28:(index%2===0?-labelWidth-35:28),offsetY=part.id==='tourbillon'?43:(index%2===0?-27:16);
       let left=x+offsetX,top=y+offsetY;
       // Clamp only inside the usable stage; suppress labels behind side panels.
-      const min=mobile?12:width<=1150?245:315,max=mobile?width-12:width<=1150?width-240:width-293;
+      const min=mobile?12:width<=1150?245:315,max=mobile?width-12:$('.control-panel').offsetLeft-16;
       left=THREE.MathUtils.clamp(left,min,Math.max(min,max-labelWidth));
       if(top<45||top>height-80||x<min-45||x>max+45)visible=false;
       if(mobile&&top<285)visible=false;
-      const rect={x:left,y:top,w:labelWidth,h:32};if(placed.some(r=>Math.abs(r.y-rect.y)<34&&r.x<rect.x+rect.w&&r.x+r.w>rect.x))visible=false;
+      const rect={x:left,y:top,w:labelWidth,h:labelHeight};if(placed.some(r=>r.y<rect.y+rect.h+6&&r.y+r.h+6>rect.y&&r.x<rect.x+rect.w&&r.x+r.w>rect.x))visible=false;
       if(visible)placed.push(rect);label.hidden=!visible;label.style.transform=`translate(${left.toFixed(1)}px,${top.toFixed(1)}px)`;
-      const line=leaders.get(part.id);line.style.display=visible?'':'none';const endX=left>x?left:left+label.offsetWidth,endY=top+14;line.setAttribute('d',`M ${x} ${y} L ${(x+endX)/2} ${endY} L ${endX} ${endY}`);
+      const line=leaders.get(part.id);line.style.display=visible?'':'none';const endX=left>x?left:left+labelWidth,endY=top+labelHeight/2;line.setAttribute('d',`M ${x} ${y} L ${(x+endX)/2} ${endY} L ${endX} ${endY}`);
     }
   }
   function frame(now){

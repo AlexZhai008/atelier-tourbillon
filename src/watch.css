@@ -12,3 +12,78 @@
 @media(max-width:900px){.scene-hint{bottom:10px}}
 .quality-section{border-top:1px solid var(--line);margin-top:18px}.quality-section .slider-head{margin-top:15px}.quality-options{margin-top:10px}.quality-options button{font-family:inherit;font-size:10px}#render-size{font:9px Consolas;color:#9cab9f}#macro-view{display:flex;justify-content:space-between;border:1px solid #c6a67735;width:100%;padding:10px 12px;margin-top:11px;font-size:10px;color:var(--gold);background:#c6a67709}.reference-credit{font-size:10px}.reference-credit a{color:var(--gold);text-decoration:underline}@media(max-width:900px){.quality-section{grid-column:1/-1}.quality-options button{height:34px}}
 .specs{grid-template-columns:.65fr 1fr .8fr;gap:12px}.specs strong{font-size:24px}.specs div:last-child{display:block}.specs div>span{font-size:9px;line-height:1.6;min-height:28px}@media(min-height:850px){.intro{top:48px}.specs{gap:12px}.finish{margin-top:28px}}
+
+/* Readable typography, with room for Chinese text and touch controls. */
+:root{--muted:#adb7ae}
+body{font-size:15px;line-height:1.6}
+.brand small{font-size:10px;letter-spacing:1.4px}
+.nav,.help-button{font-size:15px;color:#b9c2b9}
+.eyebrow,.tiny,.edition,.model-id,.model-id>span{font-size:12px;letter-spacing:1px;color:#b5c0b3}
+.intro-text{font-size:16px;line-height:1.9;letter-spacing:0;color:#c0c9bf}
+.specs div>span{font-size:12px;color:#b4c0af;line-height:1.7}
+.tour-button{font-size:15px;min-height:48px;letter-spacing:0}
+.tour-note,.finish>div>span{font-size:12px;color:#b1bdad;letter-spacing:.5px}
+.control-panel{width:286px;padding:22px;background:#191f1af5}
+.panel-title{font-size:17px;letter-spacing:.5px}
+.panel-title small,.part-heading small{font-size:11px;color:#aab8a6}
+.control-row,.slider-head,.part-heading{font-size:15px}
+.control-row{gap:14px;margin-top:18px}
+.control-row small{font-size:12px;color:#a5b39f;line-height:1.5}
+.slider-head output,.range-ends{font-size:12px;color:#b6c3ac}
+.switch{flex-shrink:0;width:42px;height:26px;padding:4px}
+.switch i{width:18px;height:18px}.switch.on i{transform:translateX(16px)}
+.speed-options button{font-size:14px;height:40px;color:#c0ccba}
+.speed-options .active{color:#f0d3a6;background:#c6a67726}
+.part-button{font-size:14px;min-height:44px;height:auto;padding:9px 3px;color:#c2ceba;line-height:1.6}
+.part-button>span{font-size:12px;color:#a6b79a;margin-right:10px}
+.panel-foot{font-size:12px;color:#b2c2a7;flex-wrap:wrap}
+.panel-foot #fps{font-size:12px;color:#b2c2a7}
+.timing-panel output{font-size:28px;line-height:1.5}
+.timing-panel p{font-size:15px;line-height:1.85;color:#c3cfbd;margin:12px 0}
+.timing-panel summary,.timing-panel button{font-size:15px;min-height:44px}
+.quality-options button,#macro-view{font-size:14px;min-height:44px}
+#render-size{font-size:12px;color:#b9c7b6}
+.view-tools{right:334px}.view-tools button{width:38px;height:38px}
+.scene-hint{font-size:13px;color:#b4c2ab;letter-spacing:0}
+.scene-caption{font-size:10px;color:#aab99f;letter-spacing:1px}
+.view-tabs button{font-size:14px;color:#bbc9b2;min-height:44px}
+.footer-note,.render-info{font-size:10px;letter-spacing:1px;color:#a4b49a}
+.label{font-size:13px;line-height:1.6;letter-spacing:0;min-height:36px;padding:8px 10px;color:#e0e7d5;background:#162018ed}
+.label span{font-size:11px;color:#b7c6a8}
+#detail{width:400px;max-height:calc(100dvh - 130px);overflow-y:auto;padding:25px 28px}
+#detail h2{font-size:25px}#detail p{font-size:16px;line-height:1.85;color:#c3cfbc}
+#focus-part{font-size:15px;min-height:44px}
+dialog{max-width:620px;max-height:calc(100dvh - 32px);overflow-y:auto}
+dialog p{font-size:16px;line-height:1.9;color:#c1ceba}
+dialog small,.reference-credit{font-size:14px;color:#acbda3}
+#flight-controls{font-size:14px}#flight-controls span{font-size:12px;color:#b8c6ae}
+#toast{font-size:15px;max-width:calc(100vw - 32px);width:max-content}
+#loading small{font-size:12px;color:#adbea3}
+@media(min-width:901px) and (max-height:820px){
+  .intro{top:24px}h1{margin:14px 0;font-size:44px}
+  .intro-line{margin:16px 0}.specs{margin-top:16px}
+  .finish{margin-top:16px}.tour-button{margin-top:16px}
+}
+@media(min-width:901px) and (max-width:1150px){
+  .control-panel{width:264px;padding:18px}.view-tools{right:298px}
+  .intro-text{font-size:15px}.topbar nav{gap:15px}.nav{letter-spacing:0}
+}
+@media(max-width:900px){
+  .brand small{font-size:9px}.help-button{font-size:13px}
+  .intro{width:270px}.eyebrow,.edition{font-size:11px}
+  .intro-text{font-size:15px}.tour-button{font-size:14px;width:210px;min-height:44px}
+  .control-panel{width:auto;display:flex;flex-direction:column;gap:0;margin:0 16px 24px;padding:22px}
+  .control-panel>.control-row{margin-top:20px}
+  .slider-head:has(+input){margin-top:26px;align-self:stretch}#explode{margin:20px 0}
+  .range-ends{margin-top:0}.speed-options{width:100%;margin-top:12px}
+  .speed-options button{min-height:44px;font-size:15px}
+  #part-list{display:block}.part-button{font-size:15px}
+  .view-tools{right:16px}.scene-hint{font-size:12px}
+  .scene-caption{font-size:10px;top:82px}
+  #labels-shortcut{font-size:14px}
+  .view-tabs button{font-size:13px;padding:8px 10px}
+  #detail{width:calc(100% - 32px);max-width:420px}
+  dialog{padding:26px}#flight-controls{max-width:calc(100% - 24px)}
+}
+@media(min-width:901px) and (max-height:690px){body{overflow-y:auto}.intro .finish{display:none}}
+@media(min-width:901px) and (min-height:691px) and (max-height:760px){.finish .tiny{display:none}.finish>div{margin-top:0}}
